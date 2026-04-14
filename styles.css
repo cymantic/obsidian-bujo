@@ -1,8 +1,894 @@
-/*
+/* ── utility ─────────────────────────────────────────────────────────────── */
+.bj-clickable { cursor: pointer; }
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
+/* ── layout ──────────────────────────────────────────────────────────────── */
+.bujo-view { padding: 0 !important; }
 
-If your plugin does not need CSS, delete this file.
+.bujo-layout {
+  display: flex;
+  height: 100%;
+  font-family: var(--font-monospace);
+  font-size: 13px;
+  overflow: hidden;
+}
 
-*/
+.bujo-sidebar {
+  width: 180px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--background-modifier-border);
+  overflow-y: auto;
+  padding: 14px 10px;
+  background: var(--background-secondary);
+}
+
+/* view switcher */
+.bj-view-switcher {
+  display: flex;
+  gap: 20px;
+  padding: 0 0 10px;
+  margin: -4px 0 14px 4px;
+}
+.bj-view-switcher:first-of-type {
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+.bj-view-btn {
+  font-family: var(--font-text);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+.bj-view-btn:first-child {
+  min-width: 58px;
+}
+.bj-view-btn:hover {
+  color: var(--text-muted);
+}
+.bj-view-btn.active {
+  color: var(--text-normal);
+}
+
+.bujo-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* ── sidebar pieces ──────────────────────────────────────────────────────── */
+.bj-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0 0 6px 4px;
+}
+
+.bj-legend-label {
+  border-top: 1px solid var(--background-modifier-border);
+  padding-top: 18px;
+  margin-top: 18px;
+}
+
+.bj-section-divider {
+  height: 1px;
+  background: var(--background-modifier-border);
+  margin: 16px 0 12px 0;
+}
+
+.bj-day-item {
+  padding: 5px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-bottom: 3px;
+}
+.bj-day-item:hover { background: var(--background-modifier-hover); }
+.bj-day-item.active { background: var(--background-modifier-hover); }
+
+.bj-day-name {
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.bj-day-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+.bj-pill {
+  font-size: 9px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  padding: 1px 5px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+.bj-pill-muted { background: var(--text-muted); }
+
+/* ── tag index ───────────────────────────────────────────────────────────── */
+.bj-tag-search {
+  width: 100%;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 5px;
+  padding: 4px 8px;
+  font-family: var(--font-monospace);
+  font-size: 11px;
+  color: var(--text-normal);
+  outline: none;
+  margin-bottom: 4px;
+}
+.bj-tag-search:focus { border-color: var(--interactive-accent); }
+
+.bj-tag-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 12px;
+  gap: 6px;
+}
+.bj-tag-item:hover { background: var(--background-modifier-hover); }
+.bj-tag-item.active { background: var(--interactive-accent-hover); color: var(--interactive-accent); }
+
+.bj-tag-count {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+/* ── legend ──────────────────────────────────────────────────────────────── */
+.bj-legend-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.bj-sym { width: 14px; text-align: center; font-size: 14px; }
+
+/* ── header ──────────────────────────────────────────────────────────────── */
+.bj-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 14px 18px 10px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  flex-shrink: 0;
+  gap: 16px;
+}
+.bj-header-left {
+  flex: 1;
+}
+.bj-date {
+  font-size: 20px;
+  font-weight: 500;
+  font-family: var(--font-text);
+  line-height: 1.2;
+}
+.bj-stats {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+.bj-actions {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* ── migration banner ────────────────────────────────────────────────────── */
+.bj-banner {
+  background: var(--background-secondary);
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding: 8px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ── entries ─────────────────────────────────────────────────────────────── */
+.bj-entries {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 18px;
+  outline: none;
+}
+
+.bj-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 7px 6px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  border-bottom: 1px solid var(--background-modifier-border);
+  transition: background .1s;
+}
+.bj-entry:last-child { border-bottom-color: transparent; }
+.bj-entry.selected {
+  border: 2px solid var(--interactive-accent);
+  padding: 6px 5px; /* Adjust padding to compensate for thicker border */
+}
+.bj-entry-result { cursor: pointer; }
+.bj-entry-result:hover { background: var(--background-modifier-hover); }
+
+.bj-bullet {
+  cursor: pointer;
+  font-family: var(--font-monospace);
+  font-size: 15px;
+  width: 18px;
+  flex-shrink: 0;
+  text-align: center;
+  display: inline-block;
+  line-height: 1.5;
+}
+.bj-bullet.fixed { cursor: default; }
+
+/* bullet + text colours */
+.bj-todo      { color: var(--color-orange); }
+.bj-done      { color: var(--color-green); opacity: .7; }
+.bj-cancelled { color: var(--text-faint); opacity: .5; }
+.bj-migrate   { color: var(--interactive-accent); opacity: .7; }
+.bj-note      { color: var(--text-muted); }
+.bj-event     { color: var(--text-muted); }
+
+/* strikethrough only on entry text, not bullets */
+.bj-entry-text.bj-done,
+.bj-entry-text.bj-cancelled {
+  text-decoration: line-through;
+}
+
+.bj-entry-body {
+  flex: 1;
+  font-size: 13px;
+  line-height: 1.6;
+  word-break: break-word;
+  min-width: 0;
+}
+
+.bj-entry-text { display: inline; }
+
+.bj-entry-edit {
+  width: 100%;
+  background: var(--background-secondary);
+  border: 1px solid var(--interactive-accent);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-family: var(--font-monospace);
+  font-size: 13px;
+  color: var(--text-normal);
+  outline: none;
+}
+
+.bj-from-tag {
+  font-size: 10px;
+  color: var(--interactive-accent);
+  margin-left: 8px;
+  font-style: italic;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+}
+.bj-from-tag:hover {
+  color: var(--link-color);
+  text-decoration-style: solid;
+}
+
+.bj-to-tag {
+  font-size: 10px;
+  color: var(--interactive-accent);
+  margin-left: 8px;
+  font-style: italic;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+}
+.bj-to-tag:hover {
+  color: var(--link-color);
+  text-decoration-style: solid;
+}
+
+/* ── inline elements ─────────────────────────────────────────────────────── */
+.bj-link {
+  color: var(--link-color);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+}
+.bj-link:hover { text-decoration-style: solid; }
+
+.bj-tag-pill {
+  display: inline-block;
+  font-size: 11px;
+  color: var(--interactive-accent);
+  background: var(--interactive-accent-hover);
+  border-radius: 4px;
+  padding: 1px 5px;
+  cursor: pointer;
+  margin: 0 1px;
+  font-family: var(--font-monospace);
+}
+.bj-tag-pill:hover { opacity: .8; }
+
+.bj-del-btn {
+  cursor: pointer;
+  color: var(--text-faint);
+  font-size: 12px;
+  padding: 0 4px;
+  opacity: .4;
+  align-self: center;
+}
+.bj-del-btn:hover { opacity: 1; color: var(--text-error); }
+
+/* ── defer panel ─────────────────────────────────────────────────────────── */
+.bj-defer-panel {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin: 2px 0 6px 28px;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.bj-defer-label { color: var(--text-muted); font-size: 11px; font-style: italic; }
+.bj-defer-quick { display: flex; gap: 6px; flex-wrap: wrap; }
+.bj-defer-quick u, .bj-defer-row u {
+  text-decoration: underline;
+  text-decoration-style: solid;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  opacity: 0.6;
+}
+.bj-defer-row { display: flex; gap: 8px; align-items: center; }
+.bj-date-input {
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 5px;
+  padding: 3px 8px;
+  font-family: var(--font-monospace);
+  font-size: 12px;
+  color: var(--text-normal);
+  outline: none;
+}
+.bj-date-input:focus { border-color: var(--interactive-accent); }
+
+/* ── buttons ─────────────────────────────────────────────────────────────── */
+.bj-btn {
+  background: none;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 5px;
+  padding: 4px 10px;
+  font-family: var(--font-monospace);
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background .1s;
+}
+.bj-btn:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
+.bj-btn-accent { border-color: var(--color-orange); color: var(--color-orange); }
+.bj-btn-accent:hover { background: var(--background-secondary); }
+.bj-btn-sm { padding: 2px 10px; font-size: 11px; }
+
+/* ── kbd bar ─────────────────────────────────────────────────────────────── */
+.bj-kbd-bar {
+  padding: 4px 18px;
+  border-top: 1px solid var(--background-modifier-border);
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--text-faint);
+  flex-wrap: wrap;
+}
+.bj-kbd-hint { display: flex; align-items: center; gap: 3px; }
+.bj-kbd-hint kbd {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-family: var(--font-monospace);
+  font-size: 10px;
+}
+
+/* ── input row ───────────────────────────────────────────────────────────── */
+.bj-input-row {
+  padding: 8px 18px;
+  border-top: 1px solid var(--background-modifier-border);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+}
+.bj-input-sym {
+  font-size: 15px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  width: 18px;
+  text-align: center;
+}
+.bj-input {
+  flex: 1;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-family: var(--font-monospace);
+  font-size: 13px;
+  color: var(--text-normal);
+  outline: none;
+}
+.bj-input:focus { border-color: var(--interactive-accent); }
+
+/* ── tag view ────────────────────────────────────────────────────────────── */
+.bj-tag-view-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px 10px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  flex-shrink: 0;
+}
+.bj-tag-view-title {
+  font-size: 20px;
+  font-weight: 500;
+  flex: 1;
+  font-family: var(--font-monospace);
+}
+.bj-tag-results {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 18px;
+}
+.bj-tag-group { margin-bottom: 4px; }
+.bj-tag-day-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 10px 6px 4px;
+  letter-spacing: .03em;
+}
+
+/* ── empty / hint ────────────────────────────────────────────────────────── */
+.bj-empty {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 13px;
+  padding: 24px 0;
+}
+.bj-hint { font-size: 11px; color: var(--text-faint); padding: 4px 8px; }
+
+/* ── calendar view ───────────────────────────────────────────────────────── */
+.bj-calendar-view {
+  padding: 12px 18px;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.bj-cal-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 0 4px;
+}
+.bj-cal-title {
+  font-family: var(--font-text);
+  font-size: 16px;
+  font-weight: 500;
+  width: 200px;
+  text-align: center;
+}
+
+.bj-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  max-width: 800px;
+}
+
+.bj-cal-weekday {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  padding: 8px 4px;
+  letter-spacing: 0.05em;
+}
+
+.bj-cal-day {
+  aspect-ratio: 1;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  padding: 6px;
+  cursor: pointer;
+  background: var(--background-primary);
+  transition: all 0.1s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+}
+.bj-cal-day:hover {
+  background: var(--background-modifier-hover);
+  border-color: var(--interactive-accent);
+}
+.bj-cal-day.bj-cal-empty {
+  border: none;
+  background: transparent;
+  cursor: default;
+}
+.bj-cal-day.bj-cal-today {
+  border-color: var(--interactive-accent);
+  border-width: 2px;
+  font-weight: 600;
+}
+.bj-cal-day.bj-cal-viewing {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.bj-cal-day-num {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.bj-cal-counts {
+  display: flex;
+  gap: 6px;
+  font-size: 10px;
+  font-family: var(--font-monospace);
+}
+.bj-cal-open {
+  color: var(--color-orange);
+}
+.bj-cal-done {
+  color: var(--color-green);
+}
+.bj-cal-event {
+  color: var(--text-muted);
+}
+.bj-cal-note {
+  color: var(--text-muted);
+}
+
+/* ── settings ────────────────────────────────────────────────────────────── */
+.bujo-working-days {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.bujo-day-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: all 0.15s ease;
+}
+
+.bujo-day-btn:hover {
+  background: var(--background-modifier-hover);
+  border-color: var(--interactive-accent);
+}
+
+.bujo-day-btn.active {
+  background: var(--interactive-accent);
+  border-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* ── custom fonts (classic BuJo aesthetic) ──────────────────────────────── */
+.bujo-custom-fonts .bj-date {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}
+
+.bujo-custom-fonts .bj-cal-title {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 400;
+}
+
+.bujo-custom-fonts .bj-entry-body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.bujo-custom-fonts .bj-input {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px;
+}
+
+.bujo-custom-fonts .bj-entry-edit {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px;
+}
+
+.bujo-custom-fonts .bj-day-name {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 500;
+}
+
+.bujo-custom-fonts .bj-section-label {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  letter-spacing: 0.08em;
+}
+
+/* ── review view ─────────────────────────────────────────────────────────── */
+.bj-review-header {
+  padding: 10px 18px 8px;
+}
+
+.bj-review-totals {
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+
+.bj-review-total {
+  font-weight: 500;
+}
+
+.bj-review-total.bj-done { color: var(--color-green); }
+.bj-review-total.bj-todo { color: var(--color-orange); }
+.bj-review-total.bj-cancelled { color: var(--text-faint); }
+.bj-review-total.bj-migrate { color: var(--interactive-accent); }
+
+.bj-review-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.bj-review-days-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  min-width: 50px;
+  text-align: center;
+}
+
+.bj-review-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 18px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 10px;
+  grid-auto-rows: 1fr;
+}
+
+.bj-review-day {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  padding: 6px;
+  background: var(--background-primary);
+  display: flex;
+  flex-direction: column;
+  min-height: 100px;
+}
+
+.bj-review-day-header {
+  padding: 4px 6px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  flex-shrink: 0;
+}
+
+.bj-review-day-header:hover {
+  background: var(--background-modifier-hover);
+}
+
+.bj-review-day-left {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+
+.bj-review-day-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.bj-review-day-stats {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-monospace);
+}
+
+.bj-review-migrate-btn {
+  flex-shrink: 0;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-color: var(--interactive-accent);
+  color: var(--interactive-accent);
+}
+
+.bj-review-migrate-btn:hover {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.bj-review-entries {
+  margin-top: 0;
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Compact entries in review */
+.bj-review-entries .bj-entry {
+  padding: 2px 4px;
+  border-bottom-color: transparent;
+  margin-bottom: 0;
+}
+
+.bj-review-entries .bj-entry-body {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.bj-review-entries .bj-bullet {
+  font-size: 13px;
+  width: 16px;
+}
+
+.bj-review-entries .bj-entry:last-child {
+  margin-bottom: 0;
+}
+
+/* ── mobile layout (touch-friendly) ─────────────────────────────────────── */
+@media (max-width: 768px), (pointer: coarse) {
+  /* Wider sidebar on mobile for better readability */
+  .bujo-sidebar {
+    width: 200px;
+  }
+
+  /* Single column review on mobile */
+  .bj-review-content {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  /* Larger touch targets for bullets */
+  .bj-bullet {
+    width: 44px;
+    height: 44px;
+    line-height: 44px;
+    font-size: 18px;
+  }
+
+  /* Larger touch targets for day items */
+  .bj-day-item {
+    padding: 10px 12px;
+    margin-bottom: 6px;
+  }
+
+  /* Larger touch targets for view switcher */
+  .bj-view-btn {
+    padding: 8px 4px;
+    font-size: 11px;
+  }
+
+  /* Larger touch targets for buttons */
+  .bj-btn {
+    padding: 8px 14px;
+    font-size: 14px;
+    min-height: 44px;
+  }
+
+  .bj-btn-sm {
+    padding: 6px 12px;
+    font-size: 12px;
+    min-height: 36px;
+  }
+
+  /* Larger entry padding for easier tapping */
+  .bj-entry {
+    padding: 12px 8px;
+  }
+
+  /* Larger input field */
+  .bj-input {
+    padding: 10px 12px;
+    font-size: 16px; /* Prevents iOS zoom on focus */
+  }
+
+  /* Larger edit input */
+  .bj-entry-edit {
+    padding: 10px 12px;
+    font-size: 16px; /* Prevents iOS zoom on focus */
+  }
+
+  /* Larger tag pills for easier tapping */
+  .bj-tag-pill {
+    font-size: 13px;
+    padding: 4px 8px;
+  }
+
+  /* Larger delete buttons */
+  .bj-del-btn {
+    font-size: 18px;
+    padding: 8px 10px;
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* More spacing in keyboard bar */
+  .bj-kbd-bar {
+    gap: 14px;
+    padding: 8px 18px;
+  }
+
+  /* Larger calendar day cells */
+  .bj-cal-day {
+    padding: 10px 8px;
+  }
+
+  .bj-cal-day-num {
+    font-size: 16px;
+  }
+
+  /* Hide some keyboard hints on very narrow screens */
+  @media (max-width: 480px) {
+    .bj-kbd-bar {
+      flex-wrap: wrap;
+    }
+  }
+}
+
+/* ── quick capture modal ─────────────────────────────────────────────────── */
+.bujo-quick-capture .bj-qc-label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+.bujo-quick-capture .bj-qc-input {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 14px;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  color: var(--text-normal);
+}
