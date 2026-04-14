@@ -43,6 +43,7 @@ export class BujoView extends ItemView {
   private clickTimer: ReturnType<typeof setTimeout> | null = null;
   private viewMode: 'journal' | 'calendar' | 'review' = 'journal';
   private calendarMonth: Date = new Date();
+  private calendarSelectedDay = 0; // 1-based day of month, 0 = none
   private reviewDays = 7; // How many days to show in review (7-49, step by 7)
   private plugin: import('./main').default;
 
@@ -298,7 +299,7 @@ export class BujoView extends ItemView {
     const kbdBar = el.createDiv({ cls: 'bj-kbd-bar' });
     const modKey = Platform.isMacOS ? 'Opt' : 'Alt';
     [['↑↓', 'nav'], [`${modKey}+↑↓`, 'reorder'], ['␣', 'cycle'], ['Enter', 'edit'], ['d', 'done'], ['c', 'cancel'], ['o', 'reopen'],
-     ['m/>', 'migrate'], ['x', 'delete'], ['n', 'new'], ['r', 'review'], ['Esc', 'deselect']].forEach(([k, label]) => {
+     ['m/>', 'migrate'], ['x', 'delete'], ['n', 'new'], ['t', 'today'], ['r', 'review'], ['Esc', 'deselect']].forEach(([k, label]) => {
       const hint = kbdBar.createSpan({ cls: 'bj-kbd-hint' });
       hint.createEl('kbd', { text: k });
       if (label) hint.appendText(` ${label}`);
@@ -309,11 +310,11 @@ export class BujoView extends ItemView {
     const symEl = inputRow.createSpan({ cls: 'bj-input-sym', text: '○' });
     const input = inputRow.createEl('input', {
       cls: 'bj-input',
-      attr: { placeholder: '. note  , event  [[Link]]  #tag  or just type a task' },
+      attr: { placeholder: '. note  , event  x done  [[Link]]  #tag  or type a task' },
     });
     input.addEventListener('input', () => {
       const v = input.value;
-      symEl.setText(v.startsWith('. ') ? '·' : v.startsWith(', ') ? '◇' : '○');
+      symEl.setText(v.startsWith('. ') ? '·' : v.startsWith(', ') ? '◇' : v.startsWith('x ') ? 'x' : '○');
     });
     input.addEventListener('keydown', (ev) => {
       if (ev.key === 'Enter') { ev.preventDefault(); this.addEntry(input.value); input.value = ''; symEl.setText('○'); }
@@ -388,8 +389,9 @@ export class BujoView extends ItemView {
       const isToday = dateStr === today;
       const isViewing = dateStr === this.currentDate;
 
+      const isSelected = day === this.calendarSelectedDay;
       const cell = grid.createDiv({
-        cls: `bj-cal-day${isToday ? ' bj-cal-today' : ''}${isViewing ? ' bj-cal-viewing' : ''}`
+        cls: `bj-cal-day${isToday ? ' bj-cal-today' : ''}${isViewing ? ' bj-cal-viewing' : ''}${isSelected ? ' bj-cal-selected' : ''}`
       });
       cell.createDiv({ cls: 'bj-cal-day-num', text: String(day) });
 
@@ -406,6 +408,84 @@ export class BujoView extends ItemView {
         this.navigateTo(dateStr);
       });
     }
+
+    // Keyboard navigation
+    content.setAttribute('tabindex', '0');
+    content.addEventListener('keydown', async (ev) => {
+      const dim = daysInMonth;
+      let sel = this.calendarSelectedDay;
+
+      // , (<) and . (>) to change months
+      if (ev.key === ',' || ev.key === '<') {
+        ev.preventDefault();
+        this.calendarMonth = new Date(year, month - 1, 1);
+        this.calendarSelectedDay = 0;
+        await this.render();
+        return;
+      }
+      if (ev.key === '.' || ev.key === '>') {
+        ev.preventDefault();
+        this.calendarMonth = new Date(year, month + 1, 1);
+        this.calendarSelectedDay = 0;
+        await this.render();
+        return;
+      }
+
+      // Arrow keys to navigate days
+      if (ev.key === 'ArrowRight') {
+        ev.preventDefault();
+        this.calendarSelectedDay = sel < 1 ? 1 : Math.min(sel + 1, dim);
+        await this.render();
+        return;
+      }
+      if (ev.key === 'ArrowLeft') {
+        ev.preventDefault();
+        this.calendarSelectedDay = sel < 1 ? dim : Math.max(sel - 1, 1);
+        await this.render();
+        return;
+      }
+      if (ev.key === 'ArrowDown') {
+        ev.preventDefault();
+        this.calendarSelectedDay = sel < 1 ? 1 : Math.min(sel + 7, dim);
+        await this.render();
+        return;
+      }
+      if (ev.key === 'ArrowUp') {
+        ev.preventDefault();
+        this.calendarSelectedDay = sel < 1 ? dim : Math.max(sel - 7, 1);
+        await this.render();
+        return;
+      }
+
+      // Enter to select day
+      if (ev.key === 'Enter' && sel > 0) {
+        ev.preventDefault();
+        const dateStr = localIso(new Date(year, month, sel));
+        this.viewMode = 'journal';
+        this.calendarSelectedDay = 0;
+        await this.navigateTo(dateStr);
+        return;
+      }
+
+      // Escape back to journal
+      if (ev.key === 'Escape') {
+        ev.preventDefault();
+        this.viewMode = 'journal';
+        this.calendarSelectedDay = 0;
+        await this.render();
+        return;
+      }
+
+      // t to jump to today
+      if (ev.key === 't') {
+        ev.preventDefault();
+        this.viewMode = 'journal';
+        this.calendarSelectedDay = 0;
+        await this.navigateTo(todayIso());
+        return;
+      }
+    });
+    content.focus();
   }
 
   // ── review view ──
@@ -518,13 +598,28 @@ export class BujoView extends ItemView {
         });
         migrateBtn.addEventListener('click', async (ev) => {
           ev.stopPropagation();
-          const { migrateToToday } = await import('./DailyNote');
+          const { migrateToToday, loadDay: ld, saveDay: sd } = await import('./DailyNote');
+          const today = todayIso();
+
+          // Snapshot for undo
+          const srcBefore = (await ld(this.app, date, this.settings)).entries.map(e => ({ ...e }));
+          const tgtBefore = (await ld(this.app, today, this.settings)).entries.map(e => ({ ...e }));
+
           const { migrated } = await migrateToToday(this.app, date, this.settings);
-          new Notice(migrated > 0
-            ? `${migrated} task${migrated === 1 ? '' : 's'} migrated to today ›`
-            : 'No open tasks to migrate.'
-          );
-          // Refresh review
+          if (migrated === 0) { new Notice('No open tasks to migrate.'); return; }
+
+          const frag = document.createDocumentFragment();
+          frag.appendText(`${migrated} task${migrated === 1 ? '' : 's'} migrated to today › `);
+          const undoLink = frag.createEl('a', { text: 'Undo', cls: 'bj-undo-link' });
+          const notice = new Notice(frag, 5000);
+          undoLink.addEventListener('click', async () => {
+            await sd(this.app, { date, path: '', entries: srcBefore }, this.settings);
+            await sd(this.app, { date: today, path: '', entries: tgtBefore }, this.settings);
+            notice.hide();
+            new Notice('Migration undone.');
+            await this.render();
+          });
+
           await this.render();
         });
       }
@@ -706,41 +801,29 @@ export class BujoView extends ItemView {
     const nextMonthDate = localIso(firstWorkingDayNextMonth(today, this.settings));
     const min = localIso(new Date(Date.now() + 86400000));
 
-    // Determine shortcuts based on start of week
-    const startOfWeek = this.settings.startOfWeek;
-    const isTuesdayOrThursday = startOfWeek === 2 || startOfWeek === 4;
-    const tomorrowKey = isTuesdayOrThursday ? 'd' : 't';
-    const tomorrowLabel = isTuesdayOrThursday ? 'day' : 'tomorrow';
-
-    // Get week start day name and shortcut
-    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const dayShortcuts = ['s', 'm', 't', 'w', 'r', 'f', 's'];
-    const weekStartName = dayNames[startOfWeek];
-    const weekStartKey = dayShortcuts[startOfWeek];
-
     const panel = parent.createDiv({ cls: 'bj-defer-panel' });
     const lbl = entry.text.length > 38 ? entry.text.slice(0, 38) + '…' : entry.text;
     panel.createDiv({ cls: 'bj-defer-label', text: `Migrate "${lbl}" to…` });
 
     const quick = panel.createDiv({ cls: 'bj-defer-quick' });
 
-    // Tomorrow button
-    const tomorrowBtn = quick.createEl('button', { cls: 'bj-btn bj-btn-sm' });
-    tomorrowBtn.createEl('u', { text: tomorrowKey });
-    tomorrowBtn.appendText(tomorrowLabel.slice(1));
-    tomorrowBtn.addEventListener('click', () => this.doMigrateEntry(entry, tomorrowDate));
+    // Next day button
+    const dayBtn = quick.createEl('button', { cls: 'bj-btn bj-btn-sm' });
+    dayBtn.createEl('u', { text: 'd' });
+    dayBtn.appendText('ay');
+    dayBtn.addEventListener('click', () => this.doMigrateEntry(entry, tomorrowDate));
 
-    // Next week start button
-    const weekStartBtn = quick.createEl('button', { cls: 'bj-btn bj-btn-sm' });
-    weekStartBtn.createEl('u', { text: weekStartKey });
-    weekStartBtn.appendText(weekStartName.slice(1).toLowerCase());
-    weekStartBtn.addEventListener('click', () => this.doMigrateEntry(entry, weekStartDate));
+    // Next week button
+    const weekBtn = quick.createEl('button', { cls: 'bj-btn bj-btn-sm' });
+    weekBtn.createEl('u', { text: 'w' });
+    weekBtn.appendText('eek');
+    weekBtn.addEventListener('click', () => this.doMigrateEntry(entry, weekStartDate));
 
     // Next month button
-    const nextMonthBtn = quick.createEl('button', { cls: 'bj-btn bj-btn-sm' });
-    nextMonthBtn.createEl('u', { text: 'n' });
-    nextMonthBtn.appendText('ext month');
-    nextMonthBtn.addEventListener('click', () => this.doMigrateEntry(entry, nextMonthDate));
+    const monthBtn = quick.createEl('button', { cls: 'bj-btn bj-btn-sm' });
+    monthBtn.createEl('u', { text: 'n' });
+    monthBtn.appendText('ext month');
+    monthBtn.addEventListener('click', () => this.doMigrateEntry(entry, nextMonthDate));
 
     const row = panel.createDiv({ cls: 'bj-defer-row' });
     row.createSpan({ cls: 'bj-hint', text: 'or pick' });
@@ -791,6 +874,7 @@ export class BujoView extends ItemView {
     let entryText = text;
     if (text.startsWith('. ')) { type = 'note'; entryText = text.slice(2); }
     else if (text.startsWith(', ')) { type = 'event'; entryText = text.slice(2); }
+    else if (text.startsWith('x ')) { type = 'done'; entryText = text.slice(2); }
     this.currentNote.entries.push({ id: makeId(), type, text: entryText });
     await this.save();
     await this.render();
@@ -799,10 +883,33 @@ export class BujoView extends ItemView {
   private async doMigrateAll() {
     if (!this.currentNote) return;
     const fromDate = this.currentNote.date;
+    const today = todayIso();
+
+    // Snapshot pre-migration state for undo
+    const sourceBefore = (await loadDay(this.app, fromDate, this.settings)).entries.map(e => ({ ...e }));
+    const targetBefore = (await loadDay(this.app, today, this.settings)).entries.map(e => ({ ...e }));
+
     const { migrated } = await migrateToToday(this.app, fromDate, this.settings);
-    new Notice(`${migrated} task${migrated === 1 ? '' : 's'} migrated to today ›`);
-    // Navigate to today - this will reload both notes from disk with correct state
-    await this.navigateTo(todayIso());
+    if (migrated === 0) {
+      new Notice('No open tasks to migrate.');
+      return;
+    }
+
+    // Show undo notice (5 seconds)
+    const frag = document.createDocumentFragment();
+    frag.appendText(`${migrated} task${migrated === 1 ? '' : 's'} migrated to today › `);
+    const undoLink = frag.createEl('a', { text: 'Undo', cls: 'bj-undo-link' });
+    const notice = new Notice(frag, 5000);
+    undoLink.addEventListener('click', async () => {
+      // Restore both days to pre-migration state
+      await saveDay(this.app, { date: fromDate, path: '', entries: sourceBefore }, this.settings);
+      await saveDay(this.app, { date: today, path: '', entries: targetBefore }, this.settings);
+      notice.hide();
+      new Notice('Migration undone.');
+      await this.navigateTo(this.currentDate);
+    });
+
+    await this.navigateTo(today);
   }
 
   private async doMigrateEntry(entry: BujoEntry, toDate: string) {
@@ -906,6 +1013,18 @@ export class BujoView extends ItemView {
       return;
     }
 
+    // t — jump to today (only if not in an input field)
+    if (ev.key === 't' && !ev.ctrlKey && !ev.metaKey) {
+      const active = document.activeElement;
+      if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) {
+        return;
+      }
+      ev.preventDefault();
+      this.viewMode = 'journal';
+      await this.navigateTo(todayIso());
+      return;
+    }
+
     // r — open review (only if not in an input field)
     if (ev.key === 'r' && !ev.ctrlKey && !ev.metaKey) {
       const active = document.activeElement;
@@ -932,39 +1051,26 @@ export class BujoView extends ItemView {
       return;
     }
 
-    // migrate panel shortcuts
+    // migrate panel shortcuts: d=day, w=week, n=month, c=cancel
     if (this.deferFor) {
       const entry = entries.find(e => e.id === this.deferFor);
       if (entry && entry.type === 'todo') {
-        const today = new Date();
-        const startOfWeek = this.settings.startOfWeek;
-        const isTuesdayOrThursday = startOfWeek === 2 || startOfWeek === 4;
-        const tomorrowKey = isTuesdayOrThursday ? 'd' : 't';
-        const dayShortcuts = ['s', 'm', 't', 'w', 'r', 'f', 's'];
-        const weekStartKey = dayShortcuts[startOfWeek];
-
-        // Tomorrow shortcut
-        if (ev.key === tomorrowKey) {
+        const now = new Date();
+        if (ev.key === 'd') {
           ev.preventDefault();
-          this.doMigrateEntry(entry, localIso(nextWorkingDay(today, this.settings)));
+          this.doMigrateEntry(entry, localIso(nextWorkingDay(now, this.settings)));
           return;
         }
-
-        // Next week start shortcut
-        if (ev.key === weekStartKey) {
+        if (ev.key === 'w') {
           ev.preventDefault();
-          this.doMigrateEntry(entry, localIso(nextWeekStart(today, this.settings)));
+          this.doMigrateEntry(entry, localIso(nextWeekStart(now, this.settings)));
           return;
         }
-
-        // Next month
         if (ev.key === 'n') {
           ev.preventDefault();
-          this.doMigrateEntry(entry, localIso(firstWorkingDayNextMonth(today, this.settings)));
+          this.doMigrateEntry(entry, localIso(firstWorkingDayNextMonth(now, this.settings)));
           return;
         }
-
-        // Cancel
         if (ev.key === 'c') {
           ev.preventDefault();
           this.deferFor = null;

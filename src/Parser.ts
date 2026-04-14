@@ -135,5 +135,6 @@ export function entryHasTag(entry: BujoEntry, tag: string): boolean {
 export function parseEntryType(raw: string): { type: BujoEntry['type']; text: string } {
   if (raw.startsWith('. ')) return { type: 'note', text: raw.slice(2) };
   if (raw.startsWith(', ')) return { type: 'event', text: raw.slice(2) };
+  if (raw.startsWith('x ')) return { type: 'done', text: raw.slice(2) };
   return { type: 'todo', text: raw };
 }

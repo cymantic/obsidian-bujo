@@ -81,6 +81,8 @@ function parseEntryType(raw) {
     return { type: "note", text: raw.slice(2) };
   if (raw.startsWith(", "))
     return { type: "event", text: raw.slice(2) };
+  if (raw.startsWith("x "))
+    return { type: "done", text: raw.slice(2) };
   return { type: "todo", text: raw };
 }
 export {

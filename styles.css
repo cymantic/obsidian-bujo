@@ -1,5 +1,6 @@
 /* ── utility ─────────────────────────────────────────────────────────────── */
 .bj-clickable { cursor: pointer; }
+.bj-undo-link { cursor: pointer; text-decoration: underline; font-weight: 600; }
 
 /* ── layout ──────────────────────────────────────────────────────────────── */
 .bujo-view { padding: 0 !important; }
@@ -544,6 +545,10 @@
 .bj-cal-day.bj-cal-viewing {
   background: var(--interactive-accent);
   color: var(--text-on-accent);
+}
+.bj-cal-day.bj-cal-selected {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: -2px;
 }
 
 .bj-cal-day-num {

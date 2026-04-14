@@ -176,7 +176,7 @@ class QuickCaptureModal extends Modal {
 
     const input = contentEl.createEl('input', {
       cls: 'bj-qc-input',
-      attr: { type: 'text', placeholder: '. note  , event  or just type a task' },
+      attr: { type: 'text', placeholder: '. note  , event  x done  or type a task' },
     });
 
     input.addEventListener('keydown', async (ev) => {
