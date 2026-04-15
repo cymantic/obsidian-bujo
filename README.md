@@ -138,8 +138,10 @@ Example:
 **Navigation**:
 - `↑` / `↓` — Navigate entries
 - `Alt+↑` / `Alt+↓` (Windows/Linux) or `Opt+↑` / `Opt+↓` (Mac) — Reorder entries
+- `j` — Journal view (today)
+- `k` — Calendar view
 - `r` — Open review
-- `Esc` — Deselect (or exit review)
+- `Esc` — Deselect (or exit review/calendar)
 - `n` — Focus new entry input
 
 **Actions**:

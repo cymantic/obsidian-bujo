@@ -299,7 +299,7 @@ export class BujoView extends ItemView {
     const kbdBar = el.createDiv({ cls: 'bj-kbd-bar' });
     const modKey = Platform.isMacOS ? 'Opt' : 'Alt';
     [['↑↓', 'nav'], [`${modKey}+↑↓`, 'reorder'], ['␣', 'cycle'], ['Enter', 'edit'], ['d', 'done'], ['c', 'cancel'], ['o', 'reopen'],
-     ['m/>', 'migrate'], ['x', 'delete'], ['n', 'new'], ['t', 'today'], ['r', 'review'], ['Esc', 'deselect']].forEach(([k, label]) => {
+     ['m/>', 'migrate'], ['x', 'delete'], ['n', 'new'], ['j', 'journal'], ['k', 'calendar'], ['r', 'review'], ['Esc', 'deselect']].forEach(([k, label]) => {
       const hint = kbdBar.createSpan({ cls: 'bj-kbd-hint' });
       hint.createEl('kbd', { text: k });
       if (label) hint.appendText(` ${label}`);
@@ -476,8 +476,8 @@ export class BujoView extends ItemView {
         return;
       }
 
-      // t to jump to today
-      if (ev.key === 't') {
+      // j to switch to journal view (today)
+      if (ev.key === 'j') {
         ev.preventDefault();
         this.viewMode = 'journal';
         this.calendarSelectedDay = 0;
@@ -1013,8 +1013,20 @@ export class BujoView extends ItemView {
       return;
     }
 
-    // t — jump to today (only if not in an input field)
-    if (ev.key === 't' && !ev.ctrlKey && !ev.metaKey) {
+    // r — open review (only if not in an input field)
+    if (ev.key === 'r' && !ev.ctrlKey && !ev.metaKey) {
+      const active = document.activeElement;
+      if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) {
+        return; // don't intercept if typing in an input field
+      }
+      ev.preventDefault();
+      this.viewMode = 'review';
+      await this.render();
+      return;
+    }
+
+    // j — switch to journal view (today)
+    if (ev.key === 'j' && !ev.ctrlKey && !ev.metaKey) {
       const active = document.activeElement;
       if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) {
         return;
@@ -1025,14 +1037,14 @@ export class BujoView extends ItemView {
       return;
     }
 
-    // r — open review (only if not in an input field)
-    if (ev.key === 'r' && !ev.ctrlKey && !ev.metaKey) {
+    // k — switch to calendar view
+    if (ev.key === 'k' && !ev.ctrlKey && !ev.metaKey) {
       const active = document.activeElement;
       if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) {
-        return; // don't intercept if typing in an input field
+        return;
       }
       ev.preventDefault();
-      this.viewMode = 'review';
+      this.viewMode = 'calendar';
       await this.render();
       return;
     }
