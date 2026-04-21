@@ -1,4 +1,4 @@
-import { App, TFile, TFolder, normalizePath } from 'obsidian';
+import { App, TFile, normalizePath } from 'obsidian';
 import { BujoEntry, BujoSettings, DailyNote } from './types';
 import { parse, replaceEntryBlock, makeId } from './Parser';
 

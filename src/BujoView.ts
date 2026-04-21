@@ -1,9 +1,9 @@
-import { ItemView, WorkspaceLeaf, App, Notice, Platform } from 'obsidian';
+import { ItemView, WorkspaceLeaf, Notice, Platform, TFile } from 'obsidian';
 import { BujoSettings, BujoEntry, DailyNote } from './types';
 import {
   loadDay, saveDay, migrateToToday, migrateEntry,
   loadRecentDays,
-  todayIso, localIso, nextWorkingDay, nextMonday, nextWeekStart,
+  todayIso, localIso, nextWorkingDay, nextWeekStart,
   firstWorkingDayNextMonth, parseIso,
 } from './DailyNote';
 import { makeId } from './Parser';
@@ -12,7 +12,6 @@ export const BUJO_VIEW_TYPE = 'bujo-daily-view';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-const pad = (n: number) => String(n).padStart(2, '0');
 const fmtLong = (d: Date) =>
   new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(d);
 const fmtShort = (d: Date) =>
@@ -57,7 +56,7 @@ export class BujoView extends ItemView {
   }
 
   getViewType() { return BUJO_VIEW_TYPE; }
-  getDisplayText() { return 'Daily Log'; }
+  getDisplayText() { return 'Daily log'; }
   getIcon() { return 'book-open'; }
 
   async onOpen() {
@@ -66,8 +65,9 @@ export class BujoView extends ItemView {
     await this.loadAndRender(this.currentDate);
   }
 
-  async onClose() {
+  onClose(): Promise<void> {
     this.containerEl.empty();
+    return Promise.resolve();
   }
 
   // ── font class management ──
@@ -134,16 +134,16 @@ export class BujoView extends ItemView {
     viewSwitcher.createSpan({
       cls: `bj-view-btn${this.viewMode === 'journal' ? ' active' : ''}`,
       text: 'Journal'
-    }).addEventListener('click', async () => {
+    }).addEventListener('click', () => {
       this.viewMode = 'journal';
-      await this.render();
+      void this.render();
     });
     viewSwitcher.createSpan({
       cls: `bj-view-btn${this.viewMode === 'calendar' ? ' active' : ''}`,
       text: 'Calendar'
-    }).addEventListener('click', async () => {
+    }).addEventListener('click', () => {
       this.viewMode = 'calendar';
-      await this.render();
+      void this.render();
     });
 
     // ── section switcher (Recent / Review) ──
@@ -151,19 +151,19 @@ export class BujoView extends ItemView {
     sectionSwitcher.createSpan({
       cls: `bj-view-btn${this.viewMode === 'journal' ? ' active' : ''}`,
       text: 'Recent'
-    }).addEventListener('click', async () => {
+    }).addEventListener('click', () => {
       if (this.viewMode !== 'journal') {
         this.viewMode = 'journal';
-        await this.render();
+        void this.render();
       }
     });
     sectionSwitcher.createSpan({
       cls: `bj-view-btn${this.viewMode === 'review' ? ' active' : ''}`,
       text: 'Review'
-    }).addEventListener('click', async () => {
+    }).addEventListener('click', () => {
       if (this.viewMode !== 'review') {
         this.viewMode = 'review';
-        await this.render();
+        void this.render();
       }
     });
 
@@ -231,7 +231,7 @@ export class BujoView extends ItemView {
     item.createDiv({ cls: 'bj-day-meta', text: `${done} done · ${open} open` });
 
     item.addEventListener('click', () => {
-      this.navigateTo(date);
+      void this.navigateTo(date);
     });
   }
 
@@ -245,7 +245,6 @@ export class BujoView extends ItemView {
     if (!note) return;
 
     const today = todayIso();
-    const isToday = note.date === today;
     const open = note.entries.filter(e => e.type === 'todo').length;
     const done = note.entries.filter(e => e.type === 'done').length;
 
@@ -263,12 +262,12 @@ export class BujoView extends ItemView {
       text: '📄 Open file',
       attr: { title: 'Open daily note in editor' }
     });
-    openFileBtn.addEventListener('click', async () => {
+    openFileBtn.addEventListener('click', () => {
       const file = this.app.vault.getAbstractFileByPath(note.path);
-      if (file) {
+      if (file instanceof TFile) {
         // Set flag to allow this file to open normally
         this.plugin.isOpeningFromBujo = true;
-        await this.app.workspace.getLeaf(false).openFile(file as any);
+        void this.app.workspace.getLeaf(false).openFile(file);
       }
     });
 
@@ -278,7 +277,7 @@ export class BujoView extends ItemView {
       const banner = el.createDiv({ cls: 'bj-banner' });
       banner.createSpan({ text: `${open} open task${open === 1 ? '' : 's'} from ${fmtShort(parseIso(note.date))} — migrate to today?` });
       banner.createEl('button', { cls: 'bj-btn bj-btn-accent bj-btn-sm', text: 'Migrate → today' })
-        .addEventListener('click', () => this.doMigrateAll());
+        .addEventListener('click', () => void this.doMigrateAll());
     }
 
     // entries
@@ -310,21 +309,22 @@ export class BujoView extends ItemView {
     const symEl = inputRow.createSpan({ cls: 'bj-input-sym', text: '○' });
     const input = inputRow.createEl('input', {
       cls: 'bj-input',
-      attr: { placeholder: '. note  , event  x done  [[Link]]  #tag  or type a task' },
+      // eslint-disable-next-line obsidianmd/ui/sentence-case -- prefix syntax examples
+      attr: { placeholder: '. note  , event  x done  [[link]]  #tag  or type a task' },
     });
     input.addEventListener('input', () => {
       const v = input.value;
       symEl.setText(v.startsWith('. ') ? '·' : v.startsWith(', ') ? '◇' : v.startsWith('x ') ? 'x' : '○');
     });
     input.addEventListener('keydown', (ev) => {
-      if (ev.key === 'Enter') { ev.preventDefault(); this.addEntry(input.value); input.value = ''; symEl.setText('○'); }
+      if (ev.key === 'Enter') { ev.preventDefault(); void this.addEntry(input.value); input.value = ''; symEl.setText('○'); }
       if (ev.key === 'Escape') input.blur();
     });
     inputRow.createEl('button', { cls: 'bj-btn', text: 'Add' })
-      .addEventListener('click', () => { this.addEntry(input.value); input.value = ''; symEl.setText('○'); });
+      .addEventListener('click', () => { void this.addEntry(input.value); input.value = ''; symEl.setText('○'); });
 
     // keyboard nav
-    list.addEventListener('keydown', (ev) => this.handleKeydown(ev, input));
+    list.addEventListener('keydown', (ev) => void this.handleKeydown(ev, input));
     list.focus();
   }
 
@@ -342,18 +342,18 @@ export class BujoView extends ItemView {
     // Header with month/year and navigation
     const header = content.createDiv({ cls: 'bj-cal-header' });
     header.createEl('button', { cls: 'bj-btn bj-btn-sm', text: '‹' })
-      .addEventListener('click', async () => {
+      .addEventListener('click', () => {
         this.calendarMonth = new Date(year, month - 1, 1);
-        await this.render();
+        void this.render();
       });
     header.createDiv({
       cls: 'bj-cal-title',
       text: new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric' }).format(this.calendarMonth)
     });
     header.createEl('button', { cls: 'bj-btn bj-btn-sm', text: '›' })
-      .addEventListener('click', async () => {
+      .addEventListener('click', () => {
         this.calendarMonth = new Date(year, month + 1, 1);
-        await this.render();
+        void this.render();
       });
 
     // Weekday headers
@@ -380,11 +380,11 @@ export class BujoView extends ItemView {
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(year, month, day);
       const dateStr = localIso(date);
-      const note = await loadDay(this.app, dateStr, this.settings);
-      const openCount = note.entries.filter(e => e.type === 'todo').length;
-      const doneCount = note.entries.filter(e => e.type === 'done').length;
-      const eventCount = note.entries.filter(e => e.type === 'event').length;
-      const noteCount = note.entries.filter(e => e.type === 'note').length;
+      const dayNote = await loadDay(this.app, dateStr, this.settings);
+      const openCount = dayNote.entries.filter(e => e.type === 'todo').length;
+      const doneCount = dayNote.entries.filter(e => e.type === 'done').length;
+      const eventCount = dayNote.entries.filter(e => e.type === 'event').length;
+      const noteCount = dayNote.entries.filter(e => e.type === 'note').length;
 
       const isToday = dateStr === today;
       const isViewing = dateStr === this.currentDate;
@@ -405,13 +405,13 @@ export class BujoView extends ItemView {
 
       cell.addEventListener('click', () => {
         this.viewMode = 'journal';
-        this.navigateTo(dateStr);
+        void this.navigateTo(dateStr);
       });
     }
 
     // Keyboard navigation
     content.setAttribute('tabindex', '0');
-    content.addEventListener('keydown', async (ev) => {
+    content.addEventListener('keydown', (ev) => {
       const dim = daysInMonth;
       let sel = this.calendarSelectedDay;
 
@@ -420,14 +420,14 @@ export class BujoView extends ItemView {
         ev.preventDefault();
         this.calendarMonth = new Date(year, month - 1, 1);
         this.calendarSelectedDay = 0;
-        await this.render();
+        void this.render();
         return;
       }
       if (ev.key === '.' || ev.key === '>') {
         ev.preventDefault();
         this.calendarMonth = new Date(year, month + 1, 1);
         this.calendarSelectedDay = 0;
-        await this.render();
+        void this.render();
         return;
       }
 
@@ -435,35 +435,35 @@ export class BujoView extends ItemView {
       if (ev.key === 'ArrowRight') {
         ev.preventDefault();
         this.calendarSelectedDay = sel < 1 ? 1 : Math.min(sel + 1, dim);
-        await this.render();
+        void this.render();
         return;
       }
       if (ev.key === 'ArrowLeft') {
         ev.preventDefault();
         this.calendarSelectedDay = sel < 1 ? dim : Math.max(sel - 1, 1);
-        await this.render();
+        void this.render();
         return;
       }
       if (ev.key === 'ArrowDown') {
         ev.preventDefault();
         this.calendarSelectedDay = sel < 1 ? 1 : Math.min(sel + 7, dim);
-        await this.render();
+        void this.render();
         return;
       }
       if (ev.key === 'ArrowUp') {
         ev.preventDefault();
         this.calendarSelectedDay = sel < 1 ? dim : Math.max(sel - 7, 1);
-        await this.render();
+        void this.render();
         return;
       }
 
       // Enter to select day
       if (ev.key === 'Enter' && sel > 0) {
         ev.preventDefault();
-        const dateStr = localIso(new Date(year, month, sel));
+        const selectedDate = localIso(new Date(year, month, sel));
         this.viewMode = 'journal';
         this.calendarSelectedDay = 0;
-        await this.navigateTo(dateStr);
+        void this.navigateTo(selectedDate);
         return;
       }
 
@@ -472,7 +472,7 @@ export class BujoView extends ItemView {
         ev.preventDefault();
         this.viewMode = 'journal';
         this.calendarSelectedDay = 0;
-        await this.render();
+        void this.render();
         return;
       }
 
@@ -481,7 +481,7 @@ export class BujoView extends ItemView {
         ev.preventDefault();
         this.viewMode = 'journal';
         this.calendarSelectedDay = 0;
-        await this.navigateTo(todayIso());
+        void this.navigateTo(todayIso());
         return;
       }
     });
@@ -502,8 +502,8 @@ export class BujoView extends ItemView {
       const d = new Date(today);
       d.setDate(d.getDate() - i);
       const dateStr = localIso(d);
-      const note = await loadDay(this.app, dateStr, this.settings);
-      days.push({ date: dateStr, note });
+      const dayNote = await loadDay(this.app, dateStr, this.settings);
+      days.push({ date: dateStr, note: dayNote });
     }
 
     // Calculate totals across all days
@@ -520,19 +520,19 @@ export class BujoView extends ItemView {
     }
 
     // Header
-    const header = el.createDiv({ cls: 'bj-header bj-review-header' });
-    const headerLeft = header.createDiv({ cls: 'bj-header-left' });
-    headerLeft.createDiv({ cls: 'bj-date', text: 'Review' });
+    const reviewHeader = el.createDiv({ cls: 'bj-header bj-review-header' });
+    const reviewHeaderLeft = reviewHeader.createDiv({ cls: 'bj-header-left' });
+    reviewHeaderLeft.createDiv({ cls: 'bj-date', text: 'Review' });
 
     // Overall totals
-    const totals = headerLeft.createDiv({ cls: 'bj-review-totals' });
+    const totals = reviewHeaderLeft.createDiv({ cls: 'bj-review-totals' });
     totals.createSpan({ cls: 'bj-review-total bj-done', text: `${totalDone} done` });
     totals.createSpan({ cls: 'bj-review-total bj-todo', text: `${totalTodo} open` });
     totals.createSpan({ cls: 'bj-review-total bj-cancelled', text: `${totalCancelled} cancelled` });
     totals.createSpan({ cls: 'bj-review-total bj-migrate', text: `${totalMigrated} migrated` });
 
     // Controls
-    const controls = header.createDiv({ cls: 'bj-review-controls' });
+    const controls = reviewHeader.createDiv({ cls: 'bj-review-controls' });
 
     // - button (decrease by 7 days, min 7)
     const minusBtn = controls.createEl('button', {
@@ -541,10 +541,10 @@ export class BujoView extends ItemView {
       attr: { title: 'Show fewer days (-7)' }
     });
     if (this.reviewDays <= 7) minusBtn.disabled = true;
-    minusBtn.addEventListener('click', async () => {
+    minusBtn.addEventListener('click', () => {
       if (this.reviewDays > 7) {
         this.reviewDays -= 7;
-        await this.render();
+        void this.render();
       }
     });
 
@@ -558,10 +558,10 @@ export class BujoView extends ItemView {
       attr: { title: 'Show more days (+7)' }
     });
     if (this.reviewDays >= 49) plusBtn.disabled = true;
-    plusBtn.addEventListener('click', async () => {
+    plusBtn.addEventListener('click', () => {
       if (this.reviewDays < 49) {
         this.reviewDays += 7;
-        await this.render();
+        void this.render();
       }
     });
 
@@ -581,12 +581,12 @@ export class BujoView extends ItemView {
       const cancelled = note.entries.filter(e => e.type === 'cancelled').length;
       const migrated = note.entries.filter(e => e.type === 'migrate').length;
 
-      const headerLeft = dayHeader.createDiv({ cls: 'bj-review-day-left' });
+      const dayHeaderLeft = dayHeader.createDiv({ cls: 'bj-review-day-left' });
 
-      const dateLabel = headerLeft.createSpan({ cls: 'bj-review-day-label' });
+      const dateLabel = dayHeaderLeft.createSpan({ cls: 'bj-review-day-label' });
       dateLabel.setText(fmtShort(parseIso(date)));
 
-      const stats = headerLeft.createSpan({ cls: 'bj-review-day-stats' });
+      const stats = dayHeaderLeft.createSpan({ cls: 'bj-review-day-stats' });
       stats.setText(`${done}✓ ${open}○ ${cancelled}⊗ ${migrated}›`);
 
       // Migrate button for past days with open todos
@@ -596,31 +596,35 @@ export class BujoView extends ItemView {
           cls: 'bj-btn bj-btn-sm bj-review-migrate-btn',
           text: '→ today'
         });
-        migrateBtn.addEventListener('click', async (ev) => {
+        migrateBtn.addEventListener('click', (ev) => {
           ev.stopPropagation();
-          const { migrateToToday, loadDay: ld, saveDay: sd } = await import('./DailyNote');
-          const today = todayIso();
+          void (async () => {
+            const { migrateToToday: mtt, loadDay: ld, saveDay: sd } = await import('./DailyNote');
+            const todayStr = todayIso();
 
-          // Snapshot for undo
-          const srcBefore = (await ld(this.app, date, this.settings)).entries.map(e => ({ ...e }));
-          const tgtBefore = (await ld(this.app, today, this.settings)).entries.map(e => ({ ...e }));
+            // Snapshot for undo
+            const srcBefore = (await ld(this.app, date, this.settings)).entries.map(e => ({ ...e }));
+            const tgtBefore = (await ld(this.app, todayStr, this.settings)).entries.map(e => ({ ...e }));
 
-          const { migrated } = await migrateToToday(this.app, date, this.settings);
-          if (migrated === 0) { new Notice('No open tasks to migrate.'); return; }
+            const { migrated: migratedCount } = await mtt(this.app, date, this.settings);
+            if (migratedCount === 0) { new Notice('No open tasks to migrate.'); return; }
 
-          const frag = document.createDocumentFragment();
-          frag.appendText(`${migrated} task${migrated === 1 ? '' : 's'} migrated to today › `);
-          const undoLink = frag.createEl('a', { text: 'Undo', cls: 'bj-undo-link' });
-          const notice = new Notice(frag, 5000);
-          undoLink.addEventListener('click', async () => {
-            await sd(this.app, { date, path: '', entries: srcBefore }, this.settings);
-            await sd(this.app, { date: today, path: '', entries: tgtBefore }, this.settings);
-            notice.hide();
-            new Notice('Migration undone.');
+            const frag = activeDocument.createDocumentFragment();
+            frag.appendText(`${migratedCount} task${migratedCount === 1 ? '' : 's'} migrated to today › `);
+            const undoLink = frag.createEl('a', { text: 'Undo', cls: 'bj-undo-link' });
+            const notice = new Notice(frag, 5000);
+            undoLink.addEventListener('click', () => {
+              void (async () => {
+                await sd(this.app, { date, path: '', entries: srcBefore }, this.settings);
+                await sd(this.app, { date: todayStr, path: '', entries: tgtBefore }, this.settings);
+                notice.hide();
+                new Notice('Migration undone.');
+                await this.render();
+              })();
+            });
+
             await this.render();
-          });
-
-          await this.render();
+          })();
         });
       }
 
@@ -632,17 +636,17 @@ export class BujoView extends ItemView {
 
       // Click day header to navigate to that day
       dayHeader.addClass('bj-clickable');
-      dayHeader.addEventListener('click', async (ev) => {
+      dayHeader.addEventListener('click', (ev) => {
         // Don't navigate if clicking the migrate button
         if ((ev.target as HTMLElement).classList.contains('bj-review-migrate-btn')) return;
         this.viewMode = 'journal';
-        await this.navigateTo(date);
+        void this.navigateTo(date);
       });
     }
 
     // Keyboard nav for review
     content.setAttribute('tabindex', '0');
-    content.addEventListener('keydown', (ev) => this.handleKeydown(ev, null));
+    content.addEventListener('keydown', (ev) => void this.handleKeydown(ev, null));
     content.focus();
   }
 
@@ -673,7 +677,7 @@ export class BujoView extends ItemView {
     // bullet
     const bullet = row.createSpan({ cls: `bj-bullet${canCycle ? '' : ' fixed'}`, text: st.sym });
     bullet.addClass(`bj-${entry.type}`);
-    bullet.addEventListener('click', (ev) => { ev.stopPropagation(); this.cycleEntry(entry.id); });
+    bullet.addEventListener('click', (ev) => { ev.stopPropagation(); void this.cycleEntry(entry.id); });
 
     // body
     const body = row.createDiv({ cls: 'bj-entry-body' });
@@ -681,13 +685,13 @@ export class BujoView extends ItemView {
     if (isEditing) {
       const inp = body.createEl('input', { cls: 'bj-entry-edit', attr: { value: entry.text } });
       inp.addEventListener('keydown', (ev) => {
-        if (ev.key === 'Enter') { ev.preventDefault(); this.commitEdit(entry.id, inp.value); }
+        if (ev.key === 'Enter') { ev.preventDefault(); void this.commitEdit(entry.id, inp.value); }
         if (ev.key === 'Escape') { this.editingId = null; this.renderMain(); }
         ev.stopPropagation();
       });
-      inp.addEventListener('blur', () => this.commitEdit(entry.id, inp.value));
+      inp.addEventListener('blur', () => void this.commitEdit(entry.id, inp.value));
       inp.addEventListener('click', ev => ev.stopPropagation());
-      setTimeout(() => { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }, 0);
+      activeWindow.setTimeout(() => { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }, 0);
     } else {
       const textSpan = body.createSpan({ cls: `bj-entry-text bj-${entry.type}` });
       this.renderInlineText(textSpan, entry.text);
@@ -696,7 +700,7 @@ export class BujoView extends ItemView {
         fromTag.addClass('bj-clickable');
         fromTag.addEventListener('click', (ev) => {
           ev.stopPropagation();
-          this.navigateTo(entry.fromDate!);
+          void this.navigateTo(entry.fromDate!);
         });
       }
       if (entry.toDate) {
@@ -704,7 +708,7 @@ export class BujoView extends ItemView {
         toTag.addClass('bj-clickable');
         toTag.addEventListener('click', (ev) => {
           ev.stopPropagation();
-          this.navigateTo(entry.toDate!);
+          void this.navigateTo(entry.toDate!);
         });
       }
 
@@ -713,8 +717,8 @@ export class BujoView extends ItemView {
       body.addEventListener('click', (ev) => {
         ev.stopPropagation();
         if ((ev.target as HTMLElement).closest('.bj-link,.bj-tag-pill,.bj-entry-edit')) return;
-        if (this.clickTimer) { clearTimeout(this.clickTimer); this.clickTimer = null; return; }
-        this.clickTimer = setTimeout(() => {
+        if (this.clickTimer) { activeWindow.clearTimeout(this.clickTimer); this.clickTimer = null; return; }
+        this.clickTimer = activeWindow.setTimeout(() => {
           this.clickTimer = null;
           this.editingId = entry.id; this.selectedId = entry.id; this.deferFor = null;
           this.renderMain();
@@ -723,7 +727,7 @@ export class BujoView extends ItemView {
       body.addEventListener('dblclick', (ev) => {
         ev.stopPropagation();
         if ((ev.target as HTMLElement).closest('.bj-link,.bj-tag-pill')) return;
-        if (this.clickTimer) { clearTimeout(this.clickTimer); this.clickTimer = null; }
+        if (this.clickTimer) { activeWindow.clearTimeout(this.clickTimer); this.clickTimer = null; }
         if (entry.type !== 'todo') return;
         this.deferFor = entry.id; this.editingId = null; this.selectedId = entry.id;
         this.renderMain();
@@ -732,7 +736,7 @@ export class BujoView extends ItemView {
 
     if (canDel) {
       const del = row.createSpan({ cls: 'bj-del-btn', text: '✕', attr: { title: 'Delete (x)' } });
-      del.addEventListener('click', (ev) => { ev.stopPropagation(); this.deleteEntry(entry.id); });
+      del.addEventListener('click', (ev) => { ev.stopPropagation(); void this.deleteEntry(entry.id); });
     }
 
     // row click → select
@@ -759,8 +763,8 @@ export class BujoView extends ItemView {
         const link = parent.createSpan({ cls: 'bj-link', text: name, attr: { title: `Go to: ${name}` } });
         link.addEventListener('click', (ev) => {
           ev.stopPropagation();
-          if (this.clickTimer) { clearTimeout(this.clickTimer); this.clickTimer = null; }
-          this.app.workspace.openLinkText(name, '', false);
+          if (this.clickTimer) { activeWindow.clearTimeout(this.clickTimer); this.clickTimer = null; }
+          void this.app.workspace.openLinkText(name, '', false);
         });
       } else if (token.startsWith('[')) {
         // markdown link
@@ -771,9 +775,9 @@ export class BujoView extends ItemView {
           const link = parent.createSpan({ cls: 'bj-link', text: label, attr: { title: isUrl ? target : `Go to: ${target}` } });
           link.addEventListener('click', (ev) => {
             ev.stopPropagation();
-            if (this.clickTimer) { clearTimeout(this.clickTimer); this.clickTimer = null; }
-            if (isUrl) window.open(target, '_blank');
-            else this.app.workspace.openLinkText(target, '', false);
+            if (this.clickTimer) { activeWindow.clearTimeout(this.clickTimer); this.clickTimer = null; }
+            if (isUrl) activeWindow.open(target, '_blank');
+            else void this.app.workspace.openLinkText(target, '', false);
           });
         }
       } else if (token.startsWith('#')) {
@@ -781,9 +785,12 @@ export class BujoView extends ItemView {
         const pill = parent.createSpan({ cls: 'bj-tag-pill', text: token });
         pill.addEventListener('click', (ev) => {
           ev.stopPropagation();
-          if (this.clickTimer) { clearTimeout(this.clickTimer); this.clickTimer = null; }
+          if (this.clickTimer) { activeWindow.clearTimeout(this.clickTimer); this.clickTimer = null; }
           // Open Obsidian's search for this tag
-          (this.app as any).internalPlugins.getPluginById('global-search')?.instance.openGlobalSearch(`tag:${token}`);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+          const search = (this.app as any).internalPlugins?.getPluginById?.('global-search') as
+            { instance?: { openGlobalSearch(query: string): void } } | undefined;
+          search?.instance?.openGlobalSearch(`tag:${token}`);
         });
       }
 
@@ -795,10 +802,10 @@ export class BujoView extends ItemView {
 
   // ── defer/migrate panel ──
   private renderDeferPanel(parent: HTMLElement, entry: BujoEntry) {
-    const today = new Date();
-    const tomorrowDate = localIso(nextWorkingDay(today, this.settings));
-    const weekStartDate = localIso(nextWeekStart(today, this.settings));
-    const nextMonthDate = localIso(firstWorkingDayNextMonth(today, this.settings));
+    const todayDate = new Date();
+    const tomorrowDate = localIso(nextWorkingDay(todayDate, this.settings));
+    const weekStartDate = localIso(nextWeekStart(todayDate, this.settings));
+    const nextMonthDate = localIso(firstWorkingDayNextMonth(todayDate, this.settings));
     const min = localIso(new Date(Date.now() + 86400000));
 
     const panel = parent.createDiv({ cls: 'bj-defer-panel' });
@@ -807,30 +814,32 @@ export class BujoView extends ItemView {
 
     const quick = panel.createDiv({ cls: 'bj-defer-quick' });
 
+    /* eslint-disable obsidianmd/ui/sentence-case -- keyboard shortcut underlines */
     // Next day button
     const dayBtn = quick.createEl('button', { cls: 'bj-btn bj-btn-sm' });
     dayBtn.createEl('u', { text: 'd' });
     dayBtn.appendText('ay');
-    dayBtn.addEventListener('click', () => this.doMigrateEntry(entry, tomorrowDate));
+    dayBtn.addEventListener('click', () => void this.doMigrateEntry(entry, tomorrowDate));
 
     // Next week button
     const weekBtn = quick.createEl('button', { cls: 'bj-btn bj-btn-sm' });
     weekBtn.createEl('u', { text: 'w' });
     weekBtn.appendText('eek');
-    weekBtn.addEventListener('click', () => this.doMigrateEntry(entry, weekStartDate));
+    weekBtn.addEventListener('click', () => void this.doMigrateEntry(entry, weekStartDate));
 
     // Next month button
     const monthBtn = quick.createEl('button', { cls: 'bj-btn bj-btn-sm' });
     monthBtn.createEl('u', { text: 'n' });
     monthBtn.appendText('ext month');
-    monthBtn.addEventListener('click', () => this.doMigrateEntry(entry, nextMonthDate));
+    monthBtn.addEventListener('click', () => void this.doMigrateEntry(entry, nextMonthDate));
+    /* eslint-enable obsidianmd/ui/sentence-case */
 
     const row = panel.createDiv({ cls: 'bj-defer-row' });
     row.createSpan({ cls: 'bj-hint', text: 'or pick' });
     const dateInput = row.createEl('input', { cls: 'bj-date-input', type: 'date', attr: { min, value: min } });
-    dateInput.addEventListener('change', () => { if (dateInput.value) this.doMigrateEntry(entry, dateInput.value); });
+    dateInput.addEventListener('change', () => { if (dateInput.value) void this.doMigrateEntry(entry, dateInput.value); });
     const cancelBtn = row.createEl('button', { cls: 'bj-btn bj-btn-sm' });
-    cancelBtn.createEl('u', { text: 'c' });
+    cancelBtn.createEl('u', { text: 'c' }); // eslint-disable-line obsidianmd/ui/sentence-case -- keyboard shortcut
     cancelBtn.appendText('ancel');
     cancelBtn.addEventListener('click', () => { this.deferFor = null; this.renderMain(); });
   }
@@ -883,11 +892,11 @@ export class BujoView extends ItemView {
   private async doMigrateAll() {
     if (!this.currentNote) return;
     const fromDate = this.currentNote.date;
-    const today = todayIso();
+    const todayStr = todayIso();
 
     // Snapshot pre-migration state for undo
     const sourceBefore = (await loadDay(this.app, fromDate, this.settings)).entries.map(e => ({ ...e }));
-    const targetBefore = (await loadDay(this.app, today, this.settings)).entries.map(e => ({ ...e }));
+    const targetBefore = (await loadDay(this.app, todayStr, this.settings)).entries.map(e => ({ ...e }));
 
     const { migrated } = await migrateToToday(this.app, fromDate, this.settings);
     if (migrated === 0) {
@@ -896,20 +905,22 @@ export class BujoView extends ItemView {
     }
 
     // Show undo notice (5 seconds)
-    const frag = document.createDocumentFragment();
+    const frag = activeDocument.createDocumentFragment();
     frag.appendText(`${migrated} task${migrated === 1 ? '' : 's'} migrated to today › `);
     const undoLink = frag.createEl('a', { text: 'Undo', cls: 'bj-undo-link' });
     const notice = new Notice(frag, 5000);
-    undoLink.addEventListener('click', async () => {
-      // Restore both days to pre-migration state
-      await saveDay(this.app, { date: fromDate, path: '', entries: sourceBefore }, this.settings);
-      await saveDay(this.app, { date: today, path: '', entries: targetBefore }, this.settings);
-      notice.hide();
-      new Notice('Migration undone.');
-      await this.navigateTo(this.currentDate);
+    undoLink.addEventListener('click', () => {
+      void (async () => {
+        // Restore both days to pre-migration state
+        await saveDay(this.app, { date: fromDate, path: '', entries: sourceBefore }, this.settings);
+        await saveDay(this.app, { date: todayStr, path: '', entries: targetBefore }, this.settings);
+        notice.hide();
+        new Notice('Migration undone.');
+        await this.navigateTo(this.currentDate);
+      })();
     });
 
-    await this.navigateTo(today);
+    await this.navigateTo(todayStr);
   }
 
   private async doMigrateEntry(entry: BujoEntry, toDate: string) {
@@ -927,14 +938,14 @@ export class BujoView extends ItemView {
   // ── keyboard ──
   private async handleKeydown(ev: KeyboardEvent, input: HTMLInputElement | null) {
     // if the new-entry input is focused, only intercept Escape
-    if (input && document.activeElement === input) {
+    if (input && activeDocument.activeElement === input) {
       if (ev.key === 'Escape') { input.blur(); input.value = ''; }
       return;
     }
 
     // if an inline edit input is active, Enter commits, Escape cancels
-    const activeEdit = document.activeElement as HTMLElement;
-    if (activeEdit?.classList.contains('bj-entry-edit')) {
+    const activeEdit = activeDocument.activeElement;
+    if (activeEdit instanceof HTMLElement && activeEdit.classList.contains('bj-entry-edit')) {
       // handled inside renderEntry's own keydown listener — don't double-fire
       return;
     }
@@ -990,8 +1001,8 @@ export class BujoView extends ItemView {
       if (this.selectedId) {
         if (this.editingId === this.selectedId) {
           // already editing — commit (find the live input and trigger commit)
-          const liveInput = this.containerEl.querySelector('.bj-entry-edit') as HTMLInputElement | null;
-          if (liveInput) this.commitEdit(this.selectedId, liveInput.value);
+          const liveInput = this.containerEl.querySelector<HTMLInputElement>('.bj-entry-edit');
+          if (liveInput) void this.commitEdit(this.selectedId, liveInput.value);
         } else {
           // enter edit mode on selected entry
           this.editingId = this.selectedId;
@@ -1004,7 +1015,7 @@ export class BujoView extends ItemView {
 
     // n — focus the new entry input (only if not already in an input/textarea)
     if (ev.key === 'n' && !ev.ctrlKey && !ev.metaKey && input) {
-      const active = document.activeElement;
+      const active = activeDocument.activeElement;
       if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) {
         return; // don't intercept if typing in an input field
       }
@@ -1015,7 +1026,7 @@ export class BujoView extends ItemView {
 
     // r — open review (only if not in an input field)
     if (ev.key === 'r' && !ev.ctrlKey && !ev.metaKey) {
-      const active = document.activeElement;
+      const active = activeDocument.activeElement;
       if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) {
         return; // don't intercept if typing in an input field
       }
@@ -1027,7 +1038,7 @@ export class BujoView extends ItemView {
 
     // j — switch to journal view (today)
     if (ev.key === 'j' && !ev.ctrlKey && !ev.metaKey) {
-      const active = document.activeElement;
+      const active = activeDocument.activeElement;
       if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) {
         return;
       }
@@ -1039,7 +1050,7 @@ export class BujoView extends ItemView {
 
     // k — switch to calendar view
     if (ev.key === 'k' && !ev.ctrlKey && !ev.metaKey) {
-      const active = document.activeElement;
+      const active = activeDocument.activeElement;
       if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) {
         return;
       }
@@ -1065,22 +1076,22 @@ export class BujoView extends ItemView {
 
     // migrate panel shortcuts: d=day, w=week, n=month, c=cancel
     if (this.deferFor) {
-      const entry = entries.find(e => e.id === this.deferFor);
-      if (entry && entry.type === 'todo') {
+      const deferEntry = entries.find(e => e.id === this.deferFor);
+      if (deferEntry && deferEntry.type === 'todo') {
         const now = new Date();
         if (ev.key === 'd') {
           ev.preventDefault();
-          this.doMigrateEntry(entry, localIso(nextWorkingDay(now, this.settings)));
+          void this.doMigrateEntry(deferEntry, localIso(nextWorkingDay(now, this.settings)));
           return;
         }
         if (ev.key === 'w') {
           ev.preventDefault();
-          this.doMigrateEntry(entry, localIso(nextWeekStart(now, this.settings)));
+          void this.doMigrateEntry(deferEntry, localIso(nextWeekStart(now, this.settings)));
           return;
         }
         if (ev.key === 'n') {
           ev.preventDefault();
-          this.doMigrateEntry(entry, localIso(firstWorkingDayNextMonth(now, this.settings)));
+          void this.doMigrateEntry(deferEntry, localIso(firstWorkingDayNextMonth(now, this.settings)));
           return;
         }
         if (ev.key === 'c') {
@@ -1096,8 +1107,8 @@ export class BujoView extends ItemView {
     const entry = entries.find(e => e.id === this.selectedId);
     if (!entry) return;
 
-    if (ev.key === ' ' && CYCLE[entry.type]) { ev.preventDefault(); this.cycleEntry(entry.id); }
-    if (ev.key === 'd' && CYCLE[entry.type]) { ev.preventDefault(); this.cycleEntry(entry.id); }
+    if (ev.key === ' ' && CYCLE[entry.type]) { ev.preventDefault(); void this.cycleEntry(entry.id); }
+    if (ev.key === 'd' && CYCLE[entry.type]) { ev.preventDefault(); void this.cycleEntry(entry.id); }
     if (ev.key === 'c' && CYCLE[entry.type]) {
       ev.preventDefault();
       if (!this.currentNote) return;
@@ -1120,7 +1131,7 @@ export class BujoView extends ItemView {
       ev.preventDefault(); this.deferFor = entry.id; this.editingId = null; this.renderMain();
     }
     if ((ev.key === 'x' || ev.key === 'Delete') && (entry.type === 'cancelled' || entry.type === 'note' || entry.type === 'event')) {
-      ev.preventDefault(); this.deleteEntry(entry.id);
+      ev.preventDefault(); void this.deleteEntry(entry.id);
     }
   }
 }

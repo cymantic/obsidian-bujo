@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting } from 'obsidian';
+import { PluginSettingTab, Setting, App } from 'obsidian';
 import type BujoPlugin from './main';
 
 export class BujoSettingTab extends PluginSettingTab {
@@ -18,7 +18,7 @@ export class BujoSettingTab extends PluginSettingTab {
       .setName('Journal folder')
       .setDesc('Location where daily notes will be stored.')
       .addText(text => text
-        .setPlaceholder('journal')
+        .setPlaceholder('Journal')
         .setValue(this.plugin.settings.journalFolder)
         .onChange(async (value) => {
           this.plugin.settings.journalFolder = value || 'journal';
@@ -28,7 +28,7 @@ export class BujoSettingTab extends PluginSettingTab {
     // Open on startup
     new Setting(containerEl)
       .setName('Open on startup')
-      .setDesc('Automatically open the Daily Log view when Obsidian starts.')
+      .setDesc('Automatically open the daily log view when Obsidian starts.')
       .addToggle(toggle => toggle
         .setValue(this.plugin.settings.openOnStartup)
         .onChange(async (value) => {
@@ -39,10 +39,12 @@ export class BujoSettingTab extends PluginSettingTab {
     // Date format (informational only for now)
     new Setting(containerEl)
       .setName('Date format')
+      // eslint-disable-next-line obsidianmd/ui/sentence-case -- YYYY-MM-DD is a format string
       .setDesc('Format used for daily note filenames. Currently fixed as YYYY-MM-DD.')
-      .addText(text => text
-        .setValue(this.plugin.settings.dateFormat)
-        .setDisabled(true));
+      .addText(text => {
+        text.setValue(this.plugin.settings.dateFormat);
+        text.inputEl.disabled = true;
+      });
 
     // Working days
     const workingDaysSetting = new Setting(containerEl)
@@ -61,10 +63,10 @@ export class BujoSettingTab extends PluginSettingTab {
         attr: { type: 'button', title: dayLabels[index] }
       });
 
-      btn.addEventListener('click', async () => {
+      btn.addEventListener('click', () => {
         this.plugin.settings.workingDays[index] = !this.plugin.settings.workingDays[index];
         btn.toggleClass('active', this.plugin.settings.workingDays[index]);
-        await this.plugin.saveSettings();
+        void this.plugin.saveSettings();
       });
     });
 
@@ -89,6 +91,7 @@ export class BujoSettingTab extends PluginSettingTab {
     // Custom fonts
     new Setting(containerEl)
       .setName('Use custom fonts')
+      // eslint-disable-next-line obsidianmd/ui/sentence-case -- BuJo is a proper name
       .setDesc('Use BuJo\'s custom fonts for a classic journal aesthetic. When disabled, BuJo will inherit your Obsidian interface font.')
       .addToggle(toggle => toggle
         .setValue(this.plugin.settings.useCustomFonts)

@@ -24,6 +24,17 @@ guidance that supplements that document.
 - **Settings via getter.** `BujoView` reads settings from `this.plugin.settings` through a getter. Never
   pass or store a separate settings copy.
 - **`normalizePath` on all user-configured paths.** Always normalise folder paths from settings before use.
+- **ESLint must pass.** Run `npx eslint src/` before pushing. The Obsidian review bot runs the same checks.
+- **No `document`/`window`/`setTimeout`/`clearTimeout`.** Use `activeDocument`, `activeWindow`,
+  `activeWindow.setTimeout()`, `activeWindow.clearTimeout()` for popout window compatibility.
+- **No floating promises.** Every promise in an event listener must be prefixed with `void` (fire-and-forget)
+  or `await`ed. Async functions must not be passed directly as event listener callbacks — wrap with
+  `() => void asyncFn()`.
+- **Sentence case for UI text.** Obsidian enforces this. Suppress with `eslint-disable` only for proper names
+  (BuJo), format strings (YYYY-MM-DD), or keyboard shortcut underlines.
+- **No plugin ID in command IDs.** Obsidian namespaces commands automatically. Use `'open-today'` not
+  `'bujo-open-today'`.
+- **`minAppVersion` must cover all APIs used.** Currently `1.7.2`. Bump if you use newer Obsidian APIs.
 
 ---
 
@@ -70,8 +81,10 @@ guidance that supplements that document.
 - Don't bypass TypeScript strict null checks with `!` unless you've verified the value exists.
 - Don't use `Vault.adapter` — use the `Vault` API for file ops.
 - Don't access `workspace.activeLeaf` — use `getActiveViewOfType()` or `getLeavesOfType()`.
-- Don't detach leaves in `onunload`.
+- Don't detach leaves in `onunload` — resets leaf position on reload.
 - Don't set default hotkeys on commands (causes conflicts).
+- Don't pass async functions directly as event listener callbacks (causes `no-misused-promises`).
+- Don't use `document` or `window` directly — use `activeDocument`/`activeWindow`.
 
 ---
 

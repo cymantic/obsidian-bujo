@@ -114,9 +114,27 @@ Below the day list: a **legend** showing all entry type symbols.
 ```bash
 npm run dev      # watch mode (use with Obsidian Hot Reload plugin)
 npm run build    # production bundle
+npx eslint src/  # lint (must pass before submission)
 ```
 
 The plugin is loaded from `.obsidian/plugins/obsidian-bujo/` in the dev vault.
+
+## Linting
+
+The project uses [eslint-plugin-obsidianmd][eslint-plugin] — the official Obsidian ESLint plugin that mirrors
+the automated review scanner. All errors must be resolved before pushing; the Obsidian bot re-scans within
+6 hours of each push.
+
+Key rules enforced:
+
+- **Sentence case for UI text** — first word capitalised, rest lowercase. Suppress with
+  `eslint-disable` for proper names (BuJo) and format strings (YYYY-MM-DD).
+- **No floating promises** — every promise must be `await`ed, `.catch()`ed, or prefixed with `void`.
+- **No `document`/`window`/`setTimeout`/`clearTimeout`** — use `activeDocument`, `activeWindow`,
+  `activeWindow.setTimeout()`, `activeWindow.clearTimeout()` for popout window compatibility.
+- **No plugin ID in command IDs** — Obsidian namespaces commands automatically.
+- **No `detachLeavesOfType` in `onunload`** — resets leaf position on reload.
+- **`minAppVersion` in `manifest.json`** — must cover all APIs used (currently `1.7.2`).
 
 ## Code style
 
@@ -130,3 +148,7 @@ The plugin is loaded from `.obsidian/plugins/obsidian-bujo/` in the dev vault.
   dates). Use `localIso()` from `DailyNote.ts`
 - File writes use `Vault.process` (atomic) for existing files
 - Journal folder file listing uses `getFolderByPath` + `children`, not `getMarkdownFiles()` scan
+- Use `activeDocument`/`activeWindow` instead of `document`/`window` for popout window compatibility
+- Promises in event listeners: use `void` prefix for fire-and-forget, `await` where sequential
+
+[eslint-plugin]: https://github.com/obsidianmd/eslint-plugin

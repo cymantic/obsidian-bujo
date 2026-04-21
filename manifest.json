@@ -1,8 +1,8 @@
 {
   "id": "bujo",
   "name": "BuJo",
-  "version": "1.0.2",
-  "minAppVersion": "1.0.2",
+  "version": "1.0.3",
+  "minAppVersion": "1.7.2",
   "description": "Bullet Journal implementation with daily log view, task migration, and calendar.",
   "author": "Tom McMillen",
   "authorUrl": "https://github.com/cymantic",

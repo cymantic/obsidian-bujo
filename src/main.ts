@@ -1,11 +1,11 @@
-import { Plugin, Modal, WorkspaceLeaf, TFile, Notice } from 'obsidian';
+import { Plugin, Modal, Notice, MarkdownView } from 'obsidian';
 import { BujoView, BUJO_VIEW_TYPE } from './BujoView';
 import { BujoSettings, DEFAULT_SETTINGS } from './types';
 import { BujoSettingTab } from './SettingsTab';
 import { todayIso, localIso, nextWorkingDay } from './DailyNote';
 
 export default class BujoPlugin extends Plugin {
-  settings: BujoSettings;
+  settings: BujoSettings = DEFAULT_SETTINGS;
   isOpeningFromBujo = false; // Flag to track intentional file opens from BuJo view
 
   async onload() {
@@ -18,27 +18,28 @@ export default class BujoPlugin extends Plugin {
     );
 
     // ribbon icon — opens today
+    // eslint-disable-next-line obsidianmd/ui/sentence-case -- BuJo is a proper name
     this.addRibbonIcon('book-open', 'Open BuJo', () => {
-      this.openBujoView(todayIso());
+      void this.openBujoView(todayIso());
     });
 
     // command: open today
     this.addCommand({
-      id: 'bujo-open-today',
+      id: 'open-today',
       name: 'Open today',
-      callback: () => this.openBujoView(todayIso()),
+      callback: () => void this.openBujoView(todayIso()),
     });
 
     // command: open tomorrow
     this.addCommand({
-      id: 'bujo-open-tomorrow',
+      id: 'open-tomorrow',
       name: 'Open tomorrow',
-      callback: () => this.openBujoView(localIso(nextWorkingDay(new Date(), this.settings))),
+      callback: () => void this.openBujoView(localIso(nextWorkingDay(new Date(), this.settings))),
     });
 
     // command: migrate tasks to today (run from anywhere)
     this.addCommand({
-      id: 'bujo-migrate-yesterday',
+      id: 'migrate-yesterday',
       name: 'Migrate open tasks to today',
       callback: async () => {
         const { migrateToToday } = await import('./DailyNote');
@@ -58,7 +59,7 @@ export default class BujoPlugin extends Plugin {
 
     // command: quick capture
     this.addCommand({
-      id: 'bujo-quick-capture',
+      id: 'quick-capture',
       name: 'Quick capture',
       callback: () => new QuickCaptureModal(this).open(),
     });
@@ -66,7 +67,7 @@ export default class BujoPlugin extends Plugin {
     // open BuJo on startup if setting enabled
     if (this.settings.openOnStartup) {
       this.app.workspace.onLayoutReady(() => {
-        this.openBujoView(todayIso());
+        void this.openBujoView(todayIso());
       });
     }
 
@@ -96,34 +97,31 @@ export default class BujoPlugin extends Plugin {
         }
 
         // Otherwise, close the markdown leaf and open BuJo view instead
-        // Use setTimeout to ensure the leaf is fully created
-        setTimeout(() => {
+        activeWindow.setTimeout(() => {
           // Find all leaves showing this journal file as markdown
           const leaves = this.app.workspace.getLeavesOfType('markdown');
           for (const leaf of leaves) {
-            const mdView = leaf.view as any;
-            if (mdView.file && mdView.file.path === file.path) {
-              // Close this markdown view
+            const mdView = leaf.view;
+            if (mdView instanceof MarkdownView && mdView.file && mdView.file.path === file.path) {
               leaf.detach();
             }
           }
         }, 10);
 
         // Open BuJo view to this date
-        this.openBujoView(date);
+        void this.openBujoView(date);
       })
     );
 
   }
 
   onunload() {
-    this.app.workspace.detachLeavesOfType(BUJO_VIEW_TYPE);
+    // Don't detach leaves — Obsidian guideline
   }
 
   // ── settings ──────────────────────────────────────────────────────────────
-
   async loadSettings() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData() as Partial<BujoSettings>);
   }
 
   async saveSettings() {
@@ -134,7 +132,7 @@ export default class BujoPlugin extends Plugin {
 
   getBujoView(): BujoView | null {
     const leaves = this.app.workspace.getLeavesOfType(BUJO_VIEW_TYPE);
-    if (leaves.length > 0) return leaves[0].view as BujoView;
+    if (leaves.length > 0 && leaves[0].view instanceof BujoView) return leaves[0].view;
     return null;
   }
 
@@ -143,19 +141,19 @@ export default class BujoPlugin extends Plugin {
 
     if (existing.length > 0) {
       // view already open — navigate to date
-      this.app.workspace.revealLeaf(existing[0]);
-      const view = existing[0].view as BujoView;
-      await view.navigateTo(date);
+      await this.app.workspace.revealLeaf(existing[0]);
+      const view = existing[0].view;
+      if (view instanceof BujoView) await view.navigateTo(date);
       return;
     }
 
     // open in main area as a tab
     const leaf = this.app.workspace.getLeaf('tab');
     await leaf.setViewState({ type: BUJO_VIEW_TYPE, active: true });
-    this.app.workspace.revealLeaf(leaf);
+    await this.app.workspace.revealLeaf(leaf);
 
-    const view = leaf.view as BujoView;
-    await view.navigateTo(date);
+    const view = leaf.view;
+    if (view instanceof BujoView) await view.navigateTo(date);
   }
 }
 
@@ -176,19 +174,20 @@ class QuickCaptureModal extends Modal {
 
     const input = contentEl.createEl('input', {
       cls: 'bj-qc-input',
+      // eslint-disable-next-line obsidianmd/ui/sentence-case -- prefix syntax examples
       attr: { type: 'text', placeholder: '. note  , event  x done  or type a task' },
     });
 
-    input.addEventListener('keydown', async (ev) => {
+    input.addEventListener('keydown', (ev) => {
       if (ev.key === 'Enter' && input.value.trim()) {
         ev.preventDefault();
-        await this.capture(input.value.trim());
+        void this.capture(input.value.trim());
         this.close();
       }
     });
 
     // Focus after the modal animation settles
-    setTimeout(() => input.focus(), 50);
+    activeWindow.setTimeout(() => input.focus(), 50);
   }
 
   onClose() {
@@ -196,10 +195,10 @@ class QuickCaptureModal extends Modal {
   }
 
   private async capture(raw: string) {
-    const { loadDay, saveDay, todayIso } = await import('./DailyNote');
+    const { loadDay, saveDay, todayIso: todayIsoFn } = await import('./DailyNote');
     const { makeId, parseEntryType } = await import('./Parser');
 
-    const today = todayIso();
+    const today = todayIsoFn();
     const note = await loadDay(this.app, today, this.plugin.settings);
 
     const { type, text } = parseEntryType(raw);

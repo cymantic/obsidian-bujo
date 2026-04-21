@@ -84,25 +84,37 @@ obsidian-bujo/
    - Run `npm run dev` to auto-rebuild
    - Test in Obsidian
 
-3. **Follow code style**
+3. **Run ESLint**
+   ```bash
+   npx eslint src/
+   ```
+   All errors must pass before submitting. The project uses
+   [eslint-plugin-obsidianmd][eslint-plugin] which mirrors
+   the automated Obsidian plugin review scanner.
+
+4. **Follow code style**
    - Use TypeScript strict mode
    - Prefer `const` and arrow functions
    - Use Obsidian DOM helpers
      (`createDiv`, `createEl`, `createSpan`)
    - Never use `document.createElement()` directly
    - Never use inline `style.*` — use CSS classes instead
+   - Use `activeDocument`/`activeWindow` instead of
+     `document`/`window` (popout window compatibility)
+   - Use `void` for fire-and-forget promises in event
+     listeners — never leave promises floating
    - All dates use local time (never `toISOString()`)
    - File writes use `Vault.process` for existing files
    - See docs/ARCHITECTURE.md for more conventions
 
-4. **Test your changes**
+5. **Test your changes**
    - Create test entries of all types
    - Test keyboard shortcuts
    - Test migration
    - Test calendar view
    - Test with different vault configurations
 
-5. **Commit your changes**
+6. **Commit your changes**
    ```bash
    git add .
    git commit -m "feat: add feature description"
@@ -117,7 +129,7 @@ obsidian-bujo/
    - `test:` adding tests
    - `chore:` maintenance
 
-6. **Push and create PR**
+7. **Push and create PR**
    ```bash
    git push origin feature/your-feature-name
    ```
@@ -135,8 +147,10 @@ obsidian-bujo/
   `toISOString()`
 - **User feedback**: Use `new Notice()` for messages
 - **No React**: This plugin uses vanilla DOM manipulation
-- **Async/await**: Always await async operations, don't
-  fire-and-forget
+- **Async/await**: Always await async operations; use `void`
+  prefix for fire-and-forget promises in event listeners
+- **Popout windows**: Use `activeDocument`/`activeWindow`
+  instead of `document`/`window`/`setTimeout`/`clearTimeout`
 - **Comments**: Only add comments where logic isn't self-evident
 
 ### Testing
@@ -229,6 +243,8 @@ obsidian-bujo/
 
 ### Before Submitting
 
+- [ ] `npx eslint src/` passes with no errors
+- [ ] `npm run build` succeeds
 - [ ] Code follows the style guide
 - [ ] All features work as expected
 - [ ] No console errors or warnings
@@ -280,6 +296,7 @@ By contributing, you agree that your contributions will be
 licensed under the ISC License.
 
 [hot-reload]: https://github.com/pjeby/hot-reload
+[eslint-plugin]: https://github.com/obsidianmd/eslint-plugin
 [discussions]: https://github.com/cymantic/obsidian-bujo/discussions
 [issues]: https://github.com/cymantic/obsidian-bujo/issues
 [obsidian-docs]: https://docs.obsidian.md
