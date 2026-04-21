@@ -339,6 +339,14 @@ export class BujoView extends ItemView {
     const year = this.calendarMonth.getFullYear();
     const month = this.calendarMonth.getMonth();
 
+    // Default selection to today when viewing the current month
+    if (this.calendarSelectedDay === 0) {
+      const now = new Date();
+      if (now.getFullYear() === year && now.getMonth() === month) {
+        this.calendarSelectedDay = now.getDate();
+      }
+    }
+
     // Header with month/year and navigation
     const header = content.createDiv({ cls: 'bj-cal-header' });
     header.createEl('button', { cls: 'bj-btn bj-btn-sm', text: '‹' })
